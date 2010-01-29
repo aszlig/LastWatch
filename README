@@ -1,0 +1,33 @@
+.--------------.
+| Introduction |
+`--------------'
+LastWatch is a Last.fm scrobbler that fetches song information by using the
+inotify feature of the Linux kernel, version 2.6. You can use any OGG, MP3 or
+FLAC player to scrobble, as long as it doesn't use mmap(). The latter will be
+fixed in some future version.
+
+.--------------.
+| Requirements |
+`--------------'
+In order to run LastWatch, you need Python (at least 2.3) and the following
+packages:
+
+- Lastfmsubmitd (that's where you submit your user/password ;-))
+  http://www.red-bean.com/~decklin/software/lastfmsubmitd/
+- pyinotify (at least version 0.6.0)
+  http://pyinotify.sourceforge.net/
+- Mutagen (to retrieve meta information from audio files)
+  http://www.sacredchao.net/quodlibet/wiki/Development/Mutagen
+
+... and as already noted: Linux kernel v2.6 (at least 2.6.13)
+
+.-----------------.
+| Using LastWatch |
+`-----------------'
+Try invoking ./lastwatch.py --help to get an overview about the available
+options. For example if you want to watch the directory /media/music you could
+just invoke:
+
+./lastwatch.py /media/music
+
+So far, that's all about using LastWatch. Have fun =)
