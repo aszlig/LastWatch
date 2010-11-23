@@ -319,7 +319,11 @@ class Songinfo(dict):
             return item[0]
         elif not item and what in self.TAG_TRANSLATE:
             item = self.get_alternative_tag(self.TAG_TRANSLATE[what])
-            if item: return item
+            if not item:
+                item = self.get_from_fname(what)
+                if item: return item
+            else:
+                return item
         elif item:
             return item
         else:
