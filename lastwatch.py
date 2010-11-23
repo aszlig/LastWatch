@@ -147,7 +147,7 @@ class FilenameParser(object):
 
         self._filename = new_path
 
-    def parse(self, format="%n. %t %% htuoheu %a"):
+    def parse_current(self, format="%n. %t %% htuoheu %a"):
         """
         Tries to match a format string on the current filename.
         See self.ftable for a list of modifiers.
@@ -206,7 +206,7 @@ class FilenameParser(object):
 
         return results
 
-    def try_formats(self):
+    def parse(self):
         """
         Tries several format strings on the current filename and return
         the first one matching, otherwise raise a LookupError.
@@ -237,7 +237,7 @@ class FilenameParser(object):
 
         for check in formats:
             try:
-                return self.parse(format=check)
+                return self.parse_current(format=check)
             except LookupError:
                 pass
 
@@ -300,7 +300,7 @@ class Songinfo(dict):
         else:
             try:
                 parser = FilenameParser(self._filename)
-                match = parser.try_formats()
+                match = parser.parse()
             except LookupError:
                 raise TitleNotFound, self._filename
 
