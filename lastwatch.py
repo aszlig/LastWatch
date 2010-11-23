@@ -212,6 +212,7 @@ class FilenameParser(object):
 		the first one matching, otherwise raise a LookupError.
 		"""
 		formats = (
+			'%i - %A (%i)/%n. %a - %t',
 			'%a/%A - %i/%n %i - [%i] %t (%i kbps)',
 			'%a - %i - %A/  - %i - %n %t',
 			'%n - %a - %t',
