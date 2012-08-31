@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with LastWatch. If not, see <http://www.gnu.org/licenses/>.
 
-LASTWATCH_VERSION = "0.3.1"
+LASTWATCH_VERSION = "0.4.0"
 
 LASTFM_API_KEY = '3db903c7c55cf3da762c0476e7da00a8'
 LASTFM_API_SECRET = 'c6557b5e328f9d3d6e676f125f98a367'

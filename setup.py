@@ -20,7 +20,7 @@ class Test(Command):
 
 setup(
     name='LastWatch',
-    version='0.3.1',
+    version='0.4.0',
     description='Inotify scrobbler for last.fm',
     author='aszlig',
     author_email='"^[0-9]+$"@redmoonstudios.de',
