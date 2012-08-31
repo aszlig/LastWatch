@@ -19,23 +19,23 @@
 
 LASTWATCH_VERSION = "0.3.1"
 
+LASTFM_API_KEY = '3db903c7c55cf3da762c0476e7da00a8'
+LASTFM_API_SECRET = 'c6557b5e328f9d3d6e676f125f98a367'
+
+import re
 import sys
 import time
 import os
 import signal
 
+import pylast
+
 from gettext import gettext as _
-
 from textwrap import wrap
-
 from optparse import OptionParser
 
 from pyinotify import ThreadedNotifier, WatchManager, EventsCodes, ProcessEvent
-from lastfm import client as lfmclient, marshaller, repr
-
 from mutagen import File as MutagenFile
-
-import re
 
 RE_FORMAT = re.compile('(?<!%)%(?P<mod>[a-zA-Z])|([^%]+)|(?P<esc>%%)')
 
@@ -344,7 +344,7 @@ class Songinfo(dict):
         raise TitleNotFound(self._filename)
 
 
-def to_lastfm(filename, runtime, dry_run=False):
+def to_lastfm(filename, start_time, runtime, dry_run=False):
     """
     Check if we meet the conditions and submit the song info to last.fm.
     """
@@ -355,7 +355,12 @@ def to_lastfm(filename, runtime, dry_run=False):
         print "Title for %s not found!" % e
         return
 
-    lfm = lfmclient.Client('lastwatch')
+    lfm = pylast.LastFMNetwork(
+        api_key=LASTFM_API_KEY,
+        api_secret=LASTFM_API_SECRET,
+        username=USERNAME,
+        password_hash=pylast.md5(PASSWORD),
+    )
 
     if song['length'] <= 30:
         return
@@ -363,20 +368,18 @@ def to_lastfm(filename, runtime, dry_run=False):
     if not (runtime >= 240 or song['length'] * 50 / 100 <= runtime):
         return
 
-    try:
-        lfmsong = lastfm.repr(song)
-    except:
-        lfmsong = filename
-
     if dry_run:
         print _("Would submit %s to last.fm "
-                "with a total runtime of %d seconds.") % (lfmsong, runtime)
+                "with a total runtime of %d seconds.") % (song, runtime)
     else:
         print _("Will submit %s to last.fm "
-                "with a total runtime of %d seconds.") % (lfmsong, runtime)
+                "with a total runtime of %d seconds.") % (song, runtime)
 
-        song['time'] = time.gmtime()
-        lfm.submit(song)
+        lfm.scrobble(
+            artist=song['artist'],
+            title=song['title'],
+            timestamp=start_time,
+        )
 
 
 class Music(object):
@@ -432,7 +435,7 @@ class Music(object):
             del self._running[filename]
             return
 
-        to_lastfm(filename, runtime, dry_run=self._dry_run)
+        to_lastfm(filename, start_time, runtime, dry_run=self._dry_run)
         self._running[filename] = 'munge'
         print _("Stopped %s!") % filename
 
