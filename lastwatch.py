@@ -19,29 +19,28 @@
 
 LASTWATCH_VERSION = "0.3.1"
 
+LASTFM_API_KEY = '3db903c7c55cf3da762c0476e7da00a8'
+LASTFM_API_SECRET = 'c6557b5e328f9d3d6e676f125f98a367'
+
+DEBUG = False
+
+import re
 import sys
 import time
 import os
 import signal
+import ConfigParser
+
+import pylast
 
 from gettext import gettext as _
-
 from textwrap import wrap
-
 from optparse import OptionParser
 
 from pyinotify import ThreadedNotifier, WatchManager, EventsCodes, ProcessEvent
-from lastfm import client as lfmclient, marshaller, repr
-
 from mutagen import File as MutagenFile
 
-import re
-
 RE_FORMAT = re.compile('(?<!%)%(?P<mod>[a-zA-Z])|([^%]+)|(?P<esc>%%)')
-
-
-class Settings(object):
-    DEBUG = False
 
 
 class FilenameParser(object):
@@ -269,6 +268,11 @@ class Songinfo(dict):
         self._match = None
         dict.__init__(self)
 
+    def __str__(self):
+        artist = self.get('artist', _("Unknown Artist"))
+        title = self.get('title', _("Unknown Title"))
+        return "%s - %s" % (artist, title)
+
     def fetch_info(self, optional=('album',)):
         """
         Check the file type and call the corresponding method to get
@@ -344,7 +348,7 @@ class Songinfo(dict):
         raise TitleNotFound(self._filename)
 
 
-def to_lastfm(filename, runtime, dry_run=False):
+def to_lastfm(filename, start_time, runtime, settings, dry_run=False):
     """
     Check if we meet the conditions and submit the song info to last.fm.
     """
@@ -355,7 +359,12 @@ def to_lastfm(filename, runtime, dry_run=False):
         print "Title for %s not found!" % e
         return
 
-    lfm = lfmclient.Client('lastwatch')
+    lfm = pylast.LastFMNetwork(
+        api_key=LASTFM_API_KEY,
+        api_secret=LASTFM_API_SECRET,
+        username=settings.get('lastfm', 'user'),
+        password_hash=pylast.md5(settings.get('lastfm', 'passwd')),
+    )
 
     if song['length'] <= 30:
         return
@@ -363,26 +372,25 @@ def to_lastfm(filename, runtime, dry_run=False):
     if not (runtime >= 240 or song['length'] * 50 / 100 <= runtime):
         return
 
-    try:
-        lfmsong = lastfm.repr(song)
-    except:
-        lfmsong = filename
-
     if dry_run:
         print _("Would submit %s to last.fm "
-                "with a total runtime of %d seconds.") % (lfmsong, runtime)
+                "with a total runtime of %d seconds.") % (song, runtime)
     else:
         print _("Will submit %s to last.fm "
-                "with a total runtime of %d seconds.") % (lfmsong, runtime)
+                "with a total runtime of %d seconds.") % (song, runtime)
 
-        song['time'] = time.gmtime()
-        lfm.submit(song)
+        lfm.scrobble(
+            artist=song['artist'],
+            title=song['title'],
+            timestamp=int(start_time),
+        )
 
 
 class Music(object):
-    def __init__(self, dry_run=False):
+    def __init__(self, settings, dry_run=False):
         self._running = {}
         self._dry_run = dry_run
+        self._settings = settings
 
     def gc(self, current, rotate=3):  # FIXME: what if rotate is 1 or 0?
         """
@@ -398,7 +406,7 @@ class Music(object):
                 continue
 
             if st == 'delete' or st < self._running.get(current, 0):
-                if Settings.DEBUG:
+                if DEBUG:
                     print "GC: " + _("Removing %s") % fn
                 del self._running[fn]
             else:
@@ -427,20 +435,21 @@ class Music(object):
         runtime = time.time() - start_time
 
         if runtime <= 30:
-            if Settings.DEBUG:
+            if DEBUG:
                 print _("File %s discarded!") % filename
             del self._running[filename]
             return
 
-        to_lastfm(filename, runtime, dry_run=self._dry_run)
+        to_lastfm(filename, start_time, runtime, self._settings,
+                  dry_run=self._dry_run)
         self._running[filename] = 'munge'
         print _("Stopped %s!") % filename
 
 
 class Handler(ProcessEvent):
-    def __init__(self, dry_run=False):
+    def __init__(self, settings, dry_run=False):
         self._active = False
-        self._music = Music(dry_run=dry_run)
+        self._music = Music(settings, dry_run=dry_run)
 
     def set_active(self):
         self._active = True
@@ -449,7 +458,7 @@ class Handler(ProcessEvent):
         if not self._active:
             return
 
-        if Settings.DEBUG:
+        if DEBUG:
             print _("Untrapped event: %s") % event_k
 
     def allowed_file(self, event_k):
@@ -474,7 +483,7 @@ class Handler(ProcessEvent):
             self._music.stop(os.path.join(event_k.path, event_k.name))
 
 
-def lastwatch(paths, dry_run=False):
+def lastwatch(paths, settings, dry_run=False):
     flags = EventsCodes.FLAG_COLLECTIONS.get('OP_FLAGS', None)
     if flags:
         mask = flags.get('IN_OPEN') | flags.get('IN_CLOSE_NOWRITE')
@@ -483,7 +492,7 @@ def lastwatch(paths, dry_run=False):
 
     wm = WatchManager()
 
-    handler = Handler(dry_run=dry_run)
+    handler = Handler(settings, dry_run=dry_run)
 
     watcher = ThreadedNotifier(wm, handler)
     watcher.start()
@@ -550,6 +559,26 @@ def suicide(signum, frame):
     sys.exit(0)
 
 
+class Settings(ConfigParser.ConfigParser):
+    def __init__(self, cfgfile):
+        ConfigParser.ConfigParser.__init__(self)
+        self._cfgfile = cfgfile
+        self.read(cfgfile)
+        if not self.has_section('lastfm'):
+            self.prompt_credentials()
+
+    def prompt_credentials(self):
+        uname = raw_input("last.fm username: ")
+        passwd = raw_input("last.fm password: ")
+
+        self.add_section('lastfm')
+        self.set('lastfm', 'user', uname)
+        self.set('lastfm', 'passwd', passwd)
+
+        with open(self._cfgfile, 'wb') as cfg:
+            self.write(cfg)
+
+
 class LWOpts(OptionParser):
     def __init__(self):
         usage = _("Usage: %prog [options] directories...")
@@ -576,11 +605,12 @@ class LWOpts(OptionParser):
             help=_("Fork into the background.")
         )
 
-        # TODO: configuration file
-        #self.add_option("-c", "--config", metavar="FILE",
-        #   dest="cfgfile", default="~/.lastwatch/config",
-        #   help=_("Specify configuration file at FILE instead of "
-        #          "the default location at \"%default\"."))
+        self.add_option(
+            "-c", "--config", metavar="FILE",
+            dest="cfgfile", default="~/.lastwatchrc",
+            help=_("Specify configuration file at FILE instead of "
+                   "the default location at \"%default\".")
+        )
 
 
 def main():
@@ -597,10 +627,12 @@ def main():
     if options.verbose:
         Settings.DEBUG = True
 
+    settings = Settings(os.path.expanduser(options.cfgfile))
+
     if options.dryrun:
-        lastwatch(args, dry_run=True)
+        lastwatch(args, settings, dry_run=True)
     else:
-        lastwatch(args)
+        lastwatch(args, settings)
 
 
 if __name__ == "__main__":
