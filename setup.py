@@ -1,5 +1,21 @@
 #!/usr/bin/env python
+import sys
+import subprocess
 from distutils.core import setup, Command
+
+
+class Test(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        errno = subprocess.call([sys.executable, 'tests.py'])
+        raise SystemExit(errno)
 
 
 setup(
@@ -10,4 +26,5 @@ setup(
     author_email='"^[0-9]+$"@redmoonstudios.de',
     url='https://redmoonstudios.org/~aszlig/lastfm/',
     scripts=['bin/lastwatch'],
+    cmdclass={'test': Test},
 )
