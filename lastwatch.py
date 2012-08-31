@@ -382,7 +382,7 @@ def to_lastfm(filename, start_time, runtime, settings, dry_run=False):
         lfm.scrobble(
             artist=song['artist'],
             title=song['title'],
-            timestamp=start_time,
+            timestamp=int(start_time),
         )
 
 
