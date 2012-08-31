@@ -27,5 +27,6 @@ setup(
     url='https://redmoonstudios.org/~aszlig/lastfm/',
     py_modules = ['lastwatch'],
     scripts=['bin/lastwatch'],
+    requires=['pyinotify', 'pylast', 'mutagen'],
     cmdclass={'test': Test},
 )
