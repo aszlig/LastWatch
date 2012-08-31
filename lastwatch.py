@@ -22,6 +22,8 @@ LASTWATCH_VERSION = "0.3.1"
 LASTFM_API_KEY = '3db903c7c55cf3da762c0476e7da00a8'
 LASTFM_API_SECRET = 'c6557b5e328f9d3d6e676f125f98a367'
 
+DEBUG = False
+
 import re
 import sys
 import time
@@ -38,10 +40,6 @@ from pyinotify import ThreadedNotifier, WatchManager, EventsCodes, ProcessEvent
 from mutagen import File as MutagenFile
 
 RE_FORMAT = re.compile('(?<!%)%(?P<mod>[a-zA-Z])|([^%]+)|(?P<esc>%%)')
-
-
-class Settings(object):
-    DEBUG = False
 
 
 class FilenameParser(object):
@@ -401,7 +399,7 @@ class Music(object):
                 continue
 
             if st == 'delete' or st < self._running.get(current, 0):
-                if Settings.DEBUG:
+                if DEBUG:
                     print "GC: " + _("Removing %s") % fn
                 del self._running[fn]
             else:
@@ -430,7 +428,7 @@ class Music(object):
         runtime = time.time() - start_time
 
         if runtime <= 30:
-            if Settings.DEBUG:
+            if DEBUG:
                 print _("File %s discarded!") % filename
             del self._running[filename]
             return
@@ -452,7 +450,7 @@ class Handler(ProcessEvent):
         if not self._active:
             return
 
-        if Settings.DEBUG:
+        if DEBUG:
             print _("Untrapped event: %s") % event_k
 
     def allowed_file(self, event_k):
