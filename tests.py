@@ -2,6 +2,7 @@
 import unittest
 import lastwatch
 
+
 class FilenameTest(unittest.TestCase):
     def parse_and_check(self, path, expected_result):
         parser = lastwatch.FilenameParser(path)
@@ -31,6 +32,7 @@ class FilenameTest(unittest.TestCase):
         }
 
         self.parse_and_check(path, result)
+
 
 if __name__ == '__main__':
     unittest.main()

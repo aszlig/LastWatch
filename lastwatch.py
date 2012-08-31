@@ -39,8 +39,10 @@ import re
 
 RE_FORMAT = re.compile('(?<!%)%(?P<mod>[a-zA-Z])|([^%]+)|(?P<esc>%%)')
 
+
 class Settings(object):
     DEBUG = False
+
 
 class FilenameParser(object):
     match_all = r'.*'
@@ -78,7 +80,7 @@ class FilenameParser(object):
                 append = r'\s*(?P<%s>%s)\s*' % (opts[1], opts[0])
             self.node_groups.append(('re', append))
         else:
-            raise ValueError, _("Modifier not found: %%%s") % modifier
+            raise ValueError(_("Modifier not found: %%%s") % modifier)
 
     def merge_nodes(self):
         new_nodegroups = []
@@ -102,30 +104,32 @@ class FilenameParser(object):
         """
         found = self._filename.lower().find(node[1])
         if found == -1:
-            errmsg  = _("Couldn't find next plain token (%(token)r) "
-                    "after regex %(regex)r on %(text)r.")
+            errmsg = _("Couldn't find next plain token (%(token)r) "
+                       "after regex %(regex)r on %(text)r.")
             errmsg %= {'token': node[1], 'regex': regex,
-                   'text': self._filename}
-            raise LookupError, errmsg
+                       'text': self._filename}
+            raise LookupError(errmsg)
 
-        to_match, self._filename = self._filename[:found], self._filename[found+len(node[1]):]
+        to_match = self._filename[:found]
+        cutoff_at = found + len(node[1])
+        self._filename = self._filename[cutoff_at:]
 
         match = re.match(regex, to_match)
         if match:
             self.matches.append(match)
         else:
-            errmsg  = _("The regex %(regex)r did not match on %(text)r.")
+            errmsg = _("The regex %(regex)r did not match on %(text)r.")
             errmsg %= {'regex': regex, 'text': to_match}
-            raise LookupError, errmsg
+            raise LookupError(errmsg)
 
     def match_plain(self, node):
         """
         Match <plain>...more...
         """
         if not self._filename.lower().startswith(node[1]):
-            errmsg  = _("Unfortunately, %(text)r did not start with %(token)r.")
+            errmsg = _("Unfortunately, %(text)r did not start with %(token)r.")
             errmsg %= {'text': self._filename, 'token': node[1]}
-            raise LookupError, errmsg
+            raise LookupError(errmsg)
         self._filename = self._filename[len(node[1]):]
 
     def prepare_filename(self, format):
@@ -179,7 +183,7 @@ class FilenameParser(object):
             else:
                 errmsg = _("Node is neither 'plain' nor 're', "
                            "which is really weird O_o")
-                raise LookupError, errmsg
+                raise LookupError(errmsg)
 
         # last ...<regex> to parse
         if re_buffer:
@@ -187,10 +191,10 @@ class FilenameParser(object):
             if match:
                 self.matches.append(match)
             else:
-                errmsg  = _("Whoops, we can't match the last "
-                            "regex %(regex)r on %(text)r")
+                errmsg = _("Whoops, we can't match the last "
+                           "regex %(regex)r on %(text)r")
                 errmsg %= {'regex': re_buffer, 'text': self._filename}
-                raise LookupError, errmsg
+                raise LookupError(errmsg)
 
         def mergedicts(x, y):
             x.update(y.groupdict())
@@ -201,8 +205,10 @@ class FilenameParser(object):
         # sanitize
         for result in results:
             item = results[result]
-            if item.isdigit(): item = int(item)
-            else: item = item.replace('_', ' ')
+            if item.isdigit():
+                item = int(item)
+            else:
+                item = item.replace('_', ' ')
 
         return results
 
@@ -241,13 +247,15 @@ class FilenameParser(object):
             except LookupError:
                 pass
 
-        errmsg  = _("Couldn't find any title information based "
-                    "on the path of %(file)r.")
+        errmsg = _("Couldn't find any title information based "
+                   "on the path of %(file)r.")
         errmsg %= {'file': self.filename}
-        raise LookupError, errmsg
+        raise LookupError(errmsg)
+
 
 class TitleNotFound(Exception):
     pass
+
 
 class Songinfo(dict):
     TAG_TRANSLATE = {
@@ -271,7 +279,8 @@ class Songinfo(dict):
         required = ('artist', 'title')
 
         info = {
-            'length': self._audio.info.length and int(self._audio.info.length) or 0,
+            'length': (int(self._audio.info.length)
+                       if self._audio.info.length else 0),
         }
 
         for tag in required + optional:
@@ -287,7 +296,7 @@ class Songinfo(dict):
     def get_alternative_tag(self, tags):
         for tag in tags:
             item = self._audio.get(tag, None)
-            if item and type(item) == type([]):
+            if item and isinstance(item, list):
                 return item[0]
             elif item:
                 return item
@@ -302,7 +311,7 @@ class Songinfo(dict):
                 parser = FilenameParser(self._filename)
                 match = parser.parse()
             except LookupError:
-                raise TitleNotFound, self._filename
+                raise TitleNotFound(self._filename)
 
         if match:
             self._match = match
@@ -311,26 +320,29 @@ class Songinfo(dict):
             except KeyError:
                 pass
 
-        raise TitleNotFound, self._filename
+        raise TitleNotFound(self._filename)
 
     def get_taginfo(self, what):
         item = self._audio.get(what, None)
-        if item and type(item) == type([]):
+        if item and isinstance(item, list):
             return item[0]
         elif not item and what in self.TAG_TRANSLATE:
             item = self.get_alternative_tag(self.TAG_TRANSLATE[what])
             if not item:
                 item = self.get_from_fname(what)
-                if item: return item
+                if item:
+                    return item
             else:
                 return item
         elif item:
             return item
         else:
             item = self.get_from_fname(what)
-            if item: return item
+            if item:
+                return item
 
-        raise TitleNotFound, self._filename
+        raise TitleNotFound(self._filename)
+
 
 def to_lastfm(filename, runtime, dry_run=False):
     """
@@ -357,19 +369,22 @@ def to_lastfm(filename, runtime, dry_run=False):
         lfmsong = filename
 
     if dry_run:
-        print _("Would submit %s to last.fm with a total runtime of %d seconds.") % (lfmsong, runtime)
+        print _("Would submit %s to last.fm "
+                "with a total runtime of %d seconds.") % (lfmsong, runtime)
     else:
-        print _("Will submit %s to last.fm with a total runtime of %d seconds.") % (lfmsong, runtime)
+        print _("Will submit %s to last.fm "
+                "with a total runtime of %d seconds.") % (lfmsong, runtime)
 
         song['time'] = time.gmtime()
         lfm.submit(song)
+
 
 class Music(object):
     def __init__(self, dry_run=False):
         self._running = {}
         self._dry_run = dry_run
 
-    def gc(self, current, rotate=3): # FIXME: what if rotate is 1 or 0?
+    def gc(self, current, rotate=3):  # FIXME: what if rotate is 1 or 0?
         """
         Garbage collector - will ensure that the maintained file
         dictionary doesn't start to grow to the size of an entire
@@ -392,7 +407,7 @@ class Music(object):
             return self.gc(current, rotate)
 
     def start(self, filename):
-        if self._running.has_key(filename) and self._running[filename] == 'munge':
+        if self._running.get(filename, None) == 'munge':
             self._running[filename] = 'delete'
             return
 
@@ -402,7 +417,7 @@ class Music(object):
         print _("Started %s!") % filename
 
     def stop(self, filename):
-        if not self._running.has_key(filename):
+        if filename not in self._running:
             return
 
         if self._running[filename] in ('delete', 'munge'):
@@ -420,6 +435,7 @@ class Music(object):
         to_lastfm(filename, runtime, dry_run=self._dry_run)
         self._running[filename] = 'munge'
         print _("Stopped %s!") % filename
+
 
 class Handler(ProcessEvent):
     def __init__(self, dry_run=False):
@@ -457,6 +473,7 @@ class Handler(ProcessEvent):
         if self._active and self.allowed_file(event_k):
             self._music.stop(os.path.join(event_k.path, event_k.name))
 
+
 def lastwatch(paths, dry_run=False):
     flags = EventsCodes.FLAG_COLLECTIONS.get('OP_FLAGS', None)
     if flags:
@@ -479,12 +496,13 @@ def lastwatch(paths, dry_run=False):
             sys.stdout.flush()
 
             wm.add_watch(path, mask, rec=True)
-            sys.stdout.write(_(" done.")+"\n")
+            sys.stdout.write(_(" done.") + "\n")
 
         print _("You have successfully launched Lastwatch.")
-        print "\n".join(wrap(_("The directories you have specified will be monitored as "
-                               "long as this process is running, the flowers are blooming "
-                               "and the earth revolves around the sun..."), 80))
+        print "\n".join(wrap(_("The directories you have specified will be "
+                               "monitored as long as this process is running, "
+                               "the flowers are blooming and the earth "
+                               "revolves around the sun..."), 80))
                                # flowers to devhell ;-)
         handler.set_active()
 
@@ -498,6 +516,7 @@ def lastwatch(paths, dry_run=False):
     except Exception, err:
         print err
 
+
 def daemonize(stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
     """
     Fork the current process and redirect all file descriptors
@@ -508,7 +527,8 @@ def daemonize(stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         if pid > 0:
             sys.exit(0)
     except OSError, err:
-        sys.stderr.write(_("We cannot escape into the background: %s") % err.strerror + "\n")
+        sys.stderr.write(_("We cannot escape into the background: %s")
+                         % err.strerror + "\n")
         sys.exit(1)
 
     # flush the standard output queue
@@ -524,9 +544,11 @@ def daemonize(stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
 
+
 def suicide(signum, frame):
     watcher.stop()
     sys.exit(0)
+
 
 class LWOpts(OptionParser):
     def __init__(self):
@@ -535,24 +557,31 @@ class LWOpts(OptionParser):
 
         OptionParser.__init__(self, usage=usage, version=version)
 
-        self.add_option("-v", "--verbose",
+        self.add_option(
+            "-v", "--verbose",
             action="store_true", dest="verbose", default=False,
             help=_("Be verbose about what's happening (especially "
-                   "about the garbage collector)."))
+                   "about the garbage collector).")
+        )
 
-        self.add_option("-n", "--dry-run",
+        self.add_option(
+            "-n", "--dry-run",
             action="store_true", dest="dryrun", default=False,
-            help=_("Do not submit any titles to last.fm."))
+            help=_("Do not submit any titles to last.fm.")
+        )
 
-        self.add_option("-b", "--background",
+        self.add_option(
+            "-b", "--background",
             action="store_true", dest="detach", default=False,
-            help=_("Fork into the background."))
+            help=_("Fork into the background.")
+        )
 
         # TODO: configuration file
         #self.add_option("-c", "--config", metavar="FILE",
         #   dest="cfgfile", default="~/.lastwatch/config",
         #   help=_("Specify configuration file at FILE instead of "
         #          "the default location at \"%default\"."))
+
 
 def main():
     parser = LWOpts()
@@ -572,6 +601,7 @@ def main():
         lastwatch(args, dry_run=True)
     else:
         lastwatch(args)
+
 
 if __name__ == "__main__":
     main()
