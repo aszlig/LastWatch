@@ -268,6 +268,11 @@ class Songinfo(dict):
         self._match = None
         dict.__init__(self)
 
+    def __str__(self):
+        artist = self.get('artist', _("Unknown Artist"))
+        title = self.get('title', _("Unknown Title"))
+        return "%s - %s" % (artist, title)
+
     def fetch_info(self, optional=('album',)):
         """
         Check the file type and call the corresponding method to get
