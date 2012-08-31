@@ -25,6 +25,7 @@ setup(
     author='aszlig',
     author_email='"^[0-9]+$"@redmoonstudios.de',
     url='https://redmoonstudios.org/~aszlig/lastfm/',
+    py_modules = ['lastwatch'],
     scripts=['bin/lastwatch'],
     cmdclass={'test': Test},
 )

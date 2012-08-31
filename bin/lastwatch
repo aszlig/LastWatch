@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+import lastwatch
+
+if __name__ == '__main__':
+    lastwatch.main()
