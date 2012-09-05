@@ -469,7 +469,7 @@ class Handler(ProcessEvent):
 
         suffix = os.path.splitext(event_k.name)[1][1:].lower()
 
-        if suffix in ('ogg', 'mp3', 'flac'):
+        if suffix in ('ogg', 'oga', 'mp3', 'flac'):
             return True
 
         return False
