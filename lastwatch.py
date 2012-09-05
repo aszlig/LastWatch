@@ -487,8 +487,10 @@ def lastwatch(paths, settings, dry_run=False):
     flags = EventsCodes.FLAG_COLLECTIONS.get('OP_FLAGS', None)
     if flags:
         mask = flags.get('IN_OPEN') | flags.get('IN_CLOSE_NOWRITE')
+        mask |= flags.get('IN_CREATE') | flags.get('IN_MOVED_TO')
     else:
         mask = EventsCodes.IN_OPEN | EventsCodes.IN_CLOSE_NOWRITE
+        mask |= EventsCodes.IN_CREATE | EventsCodes.IN_MOVED_TO
 
     wm = WatchManager()
 
@@ -504,7 +506,7 @@ def lastwatch(paths, settings, dry_run=False):
             sys.stdout.write(_("Indexing %s for watching...") % path)
             sys.stdout.flush()
 
-            wm.add_watch(path, mask, rec=True)
+            wm.add_watch(path, mask, rec=True, auto_add=True)
             sys.stdout.write(_(" done.") + "\n")
 
         print _("You have successfully launched Lastwatch.")
