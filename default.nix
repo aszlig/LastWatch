@@ -1,7 +1,7 @@
 with import <nixpkgs> {};
 
 pythonPackages.buildPythonPackage rec {
-  name = "lastwatch-0.4.0";
+  name = "lastwatch-0.4.1";
   namePrefix = "";
 
   src = ./.;
