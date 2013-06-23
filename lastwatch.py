@@ -635,3 +635,6 @@ def main():
         lastwatch(args, settings, dry_run=True)
     else:
         lastwatch(args, settings)
+
+if __name__ == '__main__':
+    main()
